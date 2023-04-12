@@ -1,11 +1,6 @@
 // Generated using webpack-cli https://github.com/webpack/webpack-cli
 
 const path = require('path');
-const MiniCssExtractPlugin = require('mini-css-extract-plugin');
-
-const isProduction = process.env.NODE_ENV == 'production';
-
-const stylesHandler = isProduction ? MiniCssExtractPlugin.loader : 'style-loader';
 
 const config = {
     entry: './client/src/index.jsx',
@@ -26,7 +21,7 @@ const config = {
             },
             {
                 test: /\.css$/i,
-                use: [stylesHandler,'css-loader'],
+                use: ['style-loader','css-loader'],
             },
             {
                 test: /\.(eot|svg|ttf|woff|woff2|png|jpg|gif)$/i,
@@ -40,14 +35,6 @@ const config = {
 };
 
 module.exports = () => {
-    if (isProduction) {
-        config.mode = 'production';
-
-        config.plugins.push(new MiniCssExtractPlugin());
-
-
-    } else {
-        config.mode = 'development';
-    }
+    config.mode = 'development';
     return config;
 };

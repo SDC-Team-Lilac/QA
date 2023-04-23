@@ -1,18 +1,19 @@
-const express = require('express')
-const path = require('path');
+const express = require('express');
+// const exphbs = require('express-handlebars');
+// const db = require('./postgreSQL');
 
-const app = express()
-const port = 3000
+const app = express();
 
-const statics = path.join(__dirname + '/../client/dist');
+// Set up Handlebars as the view engine
+// app.engine('handlebars', exphbs());
+// app.set('view engine', 'handlebars');
 
-app.use(express.static(statics));
-app.use(express.json());
+// Define a route to render a list of records from the database
+app.get('/', async (req, res) => {
+  const result = await db.query('SELECT * FROM SDC_QA');
+  const { rows } = result;
+  res.render('list', { rows });
+});
 
-app.get('/', (req, res) => {
-  res.send('Hello World!')
-})
-
-app.listen(port, () => {
-  console.log(`SDC Lilac App listening on port ${port}`)
-})
+// Start the server
+app.listen(3000, () => console.log('Server listening on port 3000'));

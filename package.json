@@ -5,7 +5,7 @@
   "main": "webpack.config.js",
   "scripts": {
     "client-dev": "webpack --mode development --watch",
-    "server-dev": "nodemon ./server/index.js",
+    "server-dev": "nodemon ./server/server.js",
     "build": "webpack --config webpack.config.js"
   },
   "repository": {
@@ -20,7 +20,13 @@
   },
   "homepage": "https://github.com/SDC-Team-Lilac/rpp2210-sdc-lilac-init#readme",
   "dependencies": {
+    "csv-parse": "^5.3.8",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
     "mongoose": "^7.0.3",
+    "node-postgres": "^0.6.2",
+    "nodemon": "^2.0.22",
+    "pg": "^8.10.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },

@@ -4,3 +4,6 @@ config.js
 .env
 package-lock.json
 tests
+questions.csv
+answers.csv
+answers_photos.csv

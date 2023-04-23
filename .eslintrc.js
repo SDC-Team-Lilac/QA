@@ -17,6 +17,6 @@ module.exports = {
     'react',
   ],
   rules: {
-    'import/no-extraneous-dependencies': ['error', { ignoreComment: true }],
+    // 'import/no-extraneous-dependencies': ['error', { ignoreComment: true }],
   },
 };

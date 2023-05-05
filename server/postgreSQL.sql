@@ -65,3 +65,16 @@ SELECT id, question_id, body, to_timestamp(date_written::bigint / 1000), answere
 FROM tmp_answers;
 
 \copy photos(id, answer_id, url) FROM './answers_photos.csv' WITH (FORMAT csv, DELIMITER ',', QUOTE '"', HEADER true, NULL 'NULL');
+
+CREATE INDEX IF NOT EXISTS questions_product_id_reported_id_idx
+ON questions (product_id, reported, id);
+
+CREATE INDEX IF NOT EXISTS answers_questions_id_reported_idx
+ON answers (question_id, reported, id);
+
+CREATE INDEX IF NOT EXISTS photos_answers_id_idx
+ON photos (answer_id, id);
+
+ANALYZE questions;
+ANALYZE answers;
+ANALYZE photos;

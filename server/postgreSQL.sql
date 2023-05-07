@@ -3,35 +3,35 @@ CREATE DATABASE sdc_qa;
 \c sdc_qa;
 
 CREATE TABLE questions (
-    id INT PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     product_id INT,
     body VARCHAR(225) NOT NULL,
-    date_written TIMESTAMP DEFAULT now() NOT NULL,
+    date_written TIMESTAMP DEFAULT now(),
     asker_name VARCHAR(30) NOT NULL,
     asker_email VARCHAR(60) NOT NULL,
     reported BOOLEAN DEFAULT false,
-    helpful INT
+    helpful INT NOT NULL DEFAULT 0
 );
 
 CREATE TABLE answers (
-    id INT PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     question_id INT REFERENCES questions(id),
     body VARCHAR(225) NOT NULL,
-    date_written TIMESTAMP DEFAULT now() NOT NULL,
+    date_written TIMESTAMP DEFAULT now(),
     answerer_name VARCHAR(30) NOT NULL,
     answerer_email VARCHAR(60) NOT NULL,
     reported BOOLEAN DEFAULT false,
-    helpful INT
+    helpful INT NOT NULL DEFAULT 0
 );
 
 CREATE TABLE photos (
-    id INT PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     answer_id INT REFERENCES answers(id),
     url VARCHAR(1000) NOT NULL
 );
 
 CREATE TEMP TABLE tmp_questions (
-    id INT,
+    id SERIAL PRIMARY KEY,
     product_id INT,
     body VARCHAR(225) NOT NULL,
     date_written TEXT,
@@ -42,7 +42,7 @@ CREATE TEMP TABLE tmp_questions (
 );
 
 CREATE TEMP TABLE tmp_answers (
-    id INT,
+    id SERIAL PRIMARY KEY,
     question_id INT,
     body VARCHAR(225) NOT NULL,
     date_written TEXT,
@@ -66,15 +66,19 @@ FROM tmp_answers;
 
 \copy photos(id, answer_id, url) FROM './answers_photos.csv' WITH (FORMAT csv, DELIMITER ',', QUOTE '"', HEADER true, NULL 'NULL');
 
-CREATE INDEX IF NOT EXISTS questions_product_id_reported_id_idx
-ON questions (product_id, reported, id);
+CREATE INDEX IF NOT EXISTS questions_product_id_reported_covering_idx
+ON questions (product_id, reported, body, date_written, asker_name, asker_email, helpful)
+INCLUDE (id)
+WHERE reported = false;
 
-CREATE INDEX IF NOT EXISTS answers_questions_id_reported_idx
-ON answers (question_id, reported, id);
+CREATE INDEX IF NOT EXISTS answers_question_id_reported_covering_idx
+ON answers (question_id, reported, body, date_written, answerer_name, helpful)
+INCLUDE (id)
+WHERE reported = false;
 
-CREATE INDEX IF NOT EXISTS photos_answers_id_idx
-ON photos (answer_id, id);
+CREATE INDEX photos_answers_idx
+ON photos (answer_id);
 
-ANALYZE questions;
-ANALYZE answers;
-ANALYZE photos;
+SELECT setval ('questions_id_seq', (SELECT max(id) FROM questions));
+SELECT setval ('answers_id_seq', (SELECT max(id) FROM answers));
+SELECT setval ('photos_id_seq', (SELECT max(id) FROM photos));

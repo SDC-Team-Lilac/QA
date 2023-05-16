@@ -1,0 +1,3 @@
+[submodule "rpp2210-sdc-lilac"]
+	path = rpp2210-sdc-lilac
+	url = https://github.com/SDC-Team-Lilac/rpp2210-sdc-lilac.git

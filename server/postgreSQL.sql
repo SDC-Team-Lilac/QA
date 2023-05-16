@@ -52,32 +52,29 @@ CREATE TEMP TABLE tmp_answers (
     helpful INT
 );
 
-\copy tmp_questions(id, product_id, body, date_written, asker_name, asker_email, reported, helpful) FROM './questions.csv' WITH (FORMAT csv, DELIMITER ',', QUOTE '"', HEADER true, NULL 'NULL');
+\copy tmp_questions(id, product_id, body, date_written, asker_name, asker_email, reported, helpful) FROM '/Users/georgehalterman/HackReactor/SDC/rpp2210-sdc-lilac-QA/server/questions.csv' WITH (FORMAT csv, DELIMITER ',', QUOTE '"', HEADER true, NULL 'NULL');
 
 INSERT INTO questions (id, product_id, body, date_written, asker_name, asker_email, reported, helpful)
 SELECT id, product_id, body, to_timestamp(date_written::bigint / 1000), asker_name, asker_email, reported, helpful
 FROM tmp_questions;
 
-\copy tmp_answers(id, question_id, body, date_written, answerer_name, answerer_email, reported, helpful) FROM './answers.csv' WITH (FORMAT csv, DELIMITER ',', QUOTE '"', HEADER true, NULL 'NULL');
+\copy tmp_answers(id, question_id, body, date_written, answerer_name, answerer_email, reported, helpful) FROM '/Users/georgehalterman/HackReactor/SDC/rpp2210-sdc-lilac-QA/server/answers.csv' WITH (FORMAT csv, DELIMITER ',', QUOTE '"', HEADER true, NULL 'NULL');
 
 INSERT INTO answers (id, question_id, body, date_written, answerer_name, answerer_email, reported, helpful)
 SELECT id, question_id, body, to_timestamp(date_written::bigint / 1000), answerer_name, answerer_email, reported, helpful
 FROM tmp_answers;
 
-\copy photos(id, answer_id, url) FROM './answers_photos.csv' WITH (FORMAT csv, DELIMITER ',', QUOTE '"', HEADER true, NULL 'NULL');
+\copy photos(id, answer_id, url) FROM '/Users/georgehalterman/HackReactor/SDC/rpp2210-sdc-lilac-QA/server/answers_photos.csv' WITH (FORMAT csv, DELIMITER ',', QUOTE '"', HEADER true, NULL 'NULL');
 
-CREATE INDEX IF NOT EXISTS questions_product_id_reported_covering_idx
-ON questions (product_id, reported, body, date_written, asker_name, asker_email, helpful)
-INCLUDE (id)
-WHERE reported = false;
+CREATE INDEX questions_product_id_reported_idx
+ON questions (product_id);
 
-CREATE INDEX IF NOT EXISTS answers_question_id_reported_covering_idx
-ON answers (question_id, reported, body, date_written, answerer_name, helpful)
-INCLUDE (id)
-WHERE reported = false;
+CREATE INDEX answers_question_id_reported_idx
+ON answers (question_id);
 
 CREATE INDEX photos_answers_idx
 ON photos (answer_id);
+
 
 SELECT setval ('questions_id_seq', (SELECT max(id) FROM questions));
 SELECT setval ('answers_id_seq', (SELECT max(id) FROM answers));

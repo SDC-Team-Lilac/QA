@@ -9,19 +9,12 @@ const app = express();
 app.use(express.json());
 
 const pool = new Pool({
-  user: georgehalterman,
-  host: localhost,
-  database: sdc_qa,
-  password: 2352,
-  port: 5432,
+  user: process.env.PGUSER,
+  host: process.env.PGHOST,
+  database: process.env.PGDATABASE,
+  password: process.env.PGPASSWORD,
+  port: process.env.PGPORT,
 });
-// const pool = new Pool({
-//   user: process.env.PGUSER,
-//   host: process.env.PGHOST,
-//   database: process.env.PGDATABASE,
-//   password: process.env.PGPASSWORD,
-//   port: process.env.PGPORT,
-// });
 
 pool.connect();
 

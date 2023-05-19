@@ -66,10 +66,10 @@ FROM tmp_answers;
 
 \copy photos(id, answer_id, url) FROM '/Users/georgehalterman/HackReactor/SDC/rpp2210-sdc-lilac-QA/server/answers_photos.csv' WITH (FORMAT csv, DELIMITER ',', QUOTE '"', HEADER true, NULL 'NULL');
 
-CREATE INDEX questions_product_id_reported_idx
+CREATE INDEX questions_product_id_idx
 ON questions (product_id);
 
-CREATE INDEX answers_question_id_reported_idx
+CREATE INDEX answers_question_id_idx
 ON answers (question_id);
 
 CREATE INDEX photos_answers_idx

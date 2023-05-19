@@ -18,88 +18,81 @@ const pool = new Pool({
 
 pool.connect();
 
-app.get('/qa/questions', (req, res) => {
-  const product_id = req.query.product_id || 1;
-  const page = req.query.page || 1;
-  const count = req.query.count || 5;
-  const offset = (page - 1) * count;
+app.get('/qa/questions', async (req, res) => {
+  try {
+    const product_id = req.query.product_id || 1;
+    const page = req.query.page || 1;
+    const count = req.query.count || 5;
+    const offset = (page - 1) * count;
 
-  pool.query(`SET enable_seqscan = OFF;
-  SET enable_bitmapscan = ON;`)
-    .then(() => pool.query(
+    await pool.query(`SET enable_seqscan = OFF;
+      SET enable_bitmapscan = ON;`);
+
+    const questionsResult = await pool.query(
       `SELECT product_id, id, body, date_written, asker_name, asker_email, reported, helpful
         FROM questions
         WHERE product_id = $1 AND reported = false
         LIMIT $2 OFFSET $3;`,
       [product_id, count, offset],
-    ))
-    .then((questionsResult) => {
-      const results = [];
+    );
 
-      const getAnswersPromises = questionsResult.rows.map((question) => {
-        const question_id = question.id;
-        // pool.query(
-        //   `EXPLAIN ANALYZE SELECT id, body, date_written, answerer_name, reported, helpful
-        //   FROM answers
-        //   WHERE question_id = $1 AND reported = false;`,
-        //   [question_id],
-        // )
-        //   .then((result) => console.log(result));
+    const results = [];
 
-        return pool.query(
-          `SELECT id, body, date_written, answerer_name, reported, helpful
-          FROM answers
-          WHERE question_id = $1 AND reported = false;`,
-          [question_id],
-        ).then((answersResult) => {
-          const answers = {};
-          const photoPromises = answersResult.rows.map((answer) => {
-            const answer_id = answer.id;
-            return pool.query(
-              `SELECT url FROM photos
-              WHERE answer_id = $1;`,
-              [answer_id],
-            ).then((photosResult) => {
-              const photos = photosResult.rows.map((photo) => photo.url);
-              answers[answer_id] = {
-                id: answer.id,
-                body: answer.body,
-                date: answer.date_written,
-                answerer_name: answer.answerer_name,
-                helpfulness: answer.helpful,
-                photos,
-              };
-            });
-          });
+    const getAnswersPromises = questionsResult.rows.map(async (question) => {
+      const question_id = question.id;
+      const answersResult = await pool.query(
+        `SELECT id, body, date_written, answerer_name, reported, helpful
+        FROM answers
+        WHERE question_id = $1 AND reported = false;`,
+        [question_id],
+      );
 
-          return Promise.all(photoPromises).then(() => answers);
-        });
+      const answers = {};
+      const photoPromises = answersResult.rows.map(async (answer) => {
+        const answer_id = answer.id;
+        const photosResult = await pool.query(
+          `SELECT url FROM photos
+          WHERE answer_id = $1;`,
+          [answer_id],
+        );
+
+        const photos = photosResult.rows.map((photo) => photo.url);
+        answers[answer_id] = {
+          id: answer.id,
+          body: answer.body,
+          date: answer.date_written,
+          answerer_name: answer.answerer_name,
+          helpfulness: answer.helpful,
+          photos,
+        };
       });
 
-      return Promise.all(getAnswersPromises).then((answers) => {
-        for (let i = 0; i < questionsResult.rows.length; i++) {
-          const question = questionsResult.rows[i];
-          const questionObject = {
-            question_id: question.id,
-            question_body: question.body,
-            question_date: question.date_written,
-            asker_name: question.asker_name,
-            question_helpfulness: question.helpful,
-            reported: question.reported,
-            answers: answers[i],
-          };
-          results.push(questionObject);
-        }
-        // console.log(results);
-        return { product_id, results };
-      });
-    })
-    .then((response) => {
-      res.status(200).send(response);
-    })
-    .catch(() => {
-      res.status(500).send('Error fetching data from DB');
+      await Promise.all(photoPromises);
+      return answers;
     });
+
+    const answers = await Promise.all(getAnswersPromises);
+
+    for (let i = 0; i < questionsResult.rows.length; i++) {
+      const question = questionsResult.rows[i];
+      const questionObject = {
+        question_id: question.id,
+        question_body: question.body,
+        question_date: question.date_written,
+        asker_name: question.asker_name,
+        question_helpfulness: question.helpful,
+        reported: question.reported,
+        answers: answers[i],
+      };
+      results.push(questionObject);
+    }
+
+    const response = { product_id, results };
+    res.status(200).send(response);
+  } catch (error) {
+    console.error('Error fetching data from DB:', error);
+    res.status(500).send('Error fetching data from DB');
+  }
 });
 
 app.get('/qa/questions/:question_id/answers', (req, res) => {
@@ -107,7 +100,8 @@ app.get('/qa/questions/:question_id/answers', (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const count = parseInt(req.query.count) || 5;
 
-  pool.query(`SELECT * FROM answers
+  pool
+    .query(`SELECT * FROM answers
     WHERE question_id = $1 AND reported = false
     ORDER BY id
     LIMIT $2
@@ -131,6 +125,9 @@ app.get('/qa/questions/:question_id/answers', (req, res) => {
               helpfulness: answer.helpful,
               photos,
             };
+          })
+          .catch(() => {
+            res.status(500).send('Error fetching data from DB');
           });
       });
 
@@ -151,8 +148,9 @@ app.post('/qa/questions', (req, res) => {
   const {
     body, name, email, product_id,
   } = req.body;
-  pool.query(`INSERT INTO questions (id, product_id, body, date_written, asker_name, asker_email)
-  VALUES ((SELECT max(id) + 1 FROM questions), ${product_id}, '${body}', CURRENT_TIMESTAMP, '${name}', '${email}')`)
+  pool
+    .query(`INSERT INTO questions (id, product_id, body, date_written, asker_name, asker_email)
+    VALUES ((SELECT max(id) + 1 FROM questions), ${product_id}, '${body}', CURRENT_TIMESTAMP, '${name}', '${email}')`)
     .then(() => {
       res.status(201).send('Created');
     })
@@ -167,7 +165,8 @@ app.post('/qa/questions/:question_id/answers', (req, res) => {
     body, name, email, photos,
   } = req.body;
 
-  pool.query(`INSERT INTO answers (id, question_id, body, answerer_name, answerer_email)
+  pool
+    .query(`INSERT INTO answers (id, question_id, body, answerer_name, answerer_email)
     VALUES ((SELECT max(id) + 1 FROM answers), $1, $2, $3, $4)
     RETURNING id;`, [question_id, body, name, email])
     .then((result) => {
@@ -236,8 +235,8 @@ app.put('/qa/answers/:answer_id/report', (req, res) => {
     });
 });
 
-app.listen(3000, () => {
-  console.log('Server is listening on port 3000');
+app.listen(3001, () => {
+  console.log('Server is listening on port 3001');
 });
 
 module.exports = app;

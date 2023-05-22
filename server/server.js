@@ -25,67 +25,48 @@ app.get('/qa/questions', async (req, res) => {
     const count = req.query.count || 5;
     const offset = (page - 1) * count;
 
-    await pool.query(`SET enable_seqscan = OFF;
-      SET enable_bitmapscan = ON;`);
+    // await pool.query(`SET enable_seqscan = OFF;
+    //   SET enable_bitmapscan = ON;`);
 
     const questionsResult = await pool.query(
-      `SELECT product_id, id, body, date_written, asker_name, asker_email, reported, helpful
-        FROM questions
-        WHERE product_id = $1 AND reported = false
-        LIMIT $2 OFFSET $3;`,
+      `SELECT json_build_object(
+        'question_id', q.id,
+        'question_body', q.body,
+        'question_date', q.date_written,
+        'asker_name', q.asker_name,
+        'question_helpfulness', q.helpful,
+        'reported', q.reported,
+        'answers', (
+          SELECT json_object_agg(
+            a.id,
+            json_build_object(
+              'id', a.id,
+              'body', a.body,
+              'date', a.date_written,
+              'answerer_name', a.answerer_name,
+              'helpfulness', a.helpful,
+              'photos', COALESCE(
+                (
+                  SELECT json_agg(p.url)
+                  FROM photos p
+                  WHERE p.answer_id = a.id
+                ), '[]'::json
+              )
+            )
+          )
+          FROM answers a
+          WHERE a.question_id = q.id
+            AND a.reported = false
+        )
+      ) AS question_data
+      FROM questions q
+      WHERE q.product_id = $1
+        AND q.reported = false
+      LIMIT $2 OFFSET $3;`,
       [product_id, count, offset],
     );
 
-    const results = [];
-
-    const getAnswersPromises = questionsResult.rows.map(async (question) => {
-      const question_id = question.id;
-      const answersResult = await pool.query(
-        `SELECT id, body, date_written, answerer_name, reported, helpful
-        FROM answers
-        WHERE question_id = $1 AND reported = false;`,
-        [question_id],
-      );
-
-      const answers = {};
-      const photoPromises = answersResult.rows.map(async (answer) => {
-        const answer_id = answer.id;
-        const photosResult = await pool.query(
-          `SELECT url FROM photos
-          WHERE answer_id = $1;`,
-          [answer_id],
-        );
-
-        const photos = photosResult.rows.map((photo) => photo.url);
-        answers[answer_id] = {
-          id: answer.id,
-          body: answer.body,
-          date: answer.date_written,
-          answerer_name: answer.answerer_name,
-          helpfulness: answer.helpful,
-          photos,
-        };
-      });
-
-      await Promise.all(photoPromises);
-      return answers;
-    });
-
-    const answers = await Promise.all(getAnswersPromises);
-
-    for (let i = 0; i < questionsResult.rows.length; i++) {
-      const question = questionsResult.rows[i];
-      const questionObject = {
-        question_id: question.id,
-        question_body: question.body,
-        question_date: question.date_written,
-        asker_name: question.asker_name,
-        question_helpfulness: question.helpful,
-        reported: question.reported,
-        answers: answers[i],
-      };
-      results.push(questionObject);
-    }
+    const results = questionsResult.rows.map((row) => row.question_data);
 
     const response = { product_id, results };
     res.status(200).send(response);
@@ -94,6 +75,83 @@ app.get('/qa/questions', async (req, res) => {
     res.status(500).send('Error fetching data from DB');
   }
 });
+
+// app.get('/qa/questions', async (req, res) => {
+//   try {
+//     const product_id = req.query.product_id || 1;
+//     const page = req.query.page || 1;
+//     const count = req.query.count || 5;
+//     const offset = (page - 1) * count;
+
+//     await pool.query(`SET enable_seqscan = OFF;
+//       SET enable_bitmapscan = ON;`);
+
+//     const questionsResult = await pool.query(
+//       `SELECT product_id, id, body, date_written, asker_name, asker_email, reported, helpful
+//         FROM questions
+//         WHERE product_id = $1 AND reported = false
+//         LIMIT $2 OFFSET $3;`,
+//       [product_id, count, offset],
+//     );
+
+//     const results = [];
+
+//     const getAnswersPromises = questionsResult.rows.map(async (question) => {
+//       const question_id = question.id;
+//       const answersResult = await pool.query(
+//         `SELECT id, body, date_written, answerer_name, reported, helpful
+//         FROM answers
+//         WHERE question_id = $1 AND reported = false;`,
+//         [question_id],
+//       );
+
+//       const answers = {};
+//       const photoPromises = answersResult.rows.map(async (answer) => {
+//         const answer_id = answer.id;
+//         const photosResult = await pool.query(
+//           `SELECT url FROM photos
+//           WHERE answer_id = $1;`,
+//           [answer_id],
+//         );
+
+//         const photos = photosResult.rows.map((photo) => photo.url);
+//         answers[answer_id] = {
+//           id: answer.id,
+//           body: answer.body,
+//           date: answer.date_written,
+//           answerer_name: answer.answerer_name,
+//           helpfulness: answer.helpful,
+//           photos,
+//         };
+//       });
+
+//       await Promise.all(photoPromises);
+//       return answers;
+//     });
+
+//     const answers = await Promise.all(getAnswersPromises);
+
+//     for (let i = 0; i < questionsResult.rows.length; i++) {
+//       const question = questionsResult.rows[i];
+//       const questionObject = {
+//         question_id: question.id,
+//         question_body: question.body,
+//         question_date: question.date_written,
+//         asker_name: question.asker_name,
+//         question_helpfulness: question.helpful,
+//         reported: question.reported,
+//         answers: answers[i],
+//       };
+//       results.push(questionObject);
+//     }
+
+//     const response = { product_id, results };
+//     res.status(200).send(response);
+//   } catch (error) {
+//     console.error('Error fetching data from DB:', error);
+//     res.status(500).send('Error fetching data from DB');
+//   }
+// });
 
 app.get('/qa/questions/:question_id/answers', (req, res) => {
   const { question_id } = req.params;

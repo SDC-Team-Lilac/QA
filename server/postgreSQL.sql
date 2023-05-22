@@ -52,19 +52,19 @@ CREATE TEMP TABLE tmp_answers (
     helpful INT
 );
 
-\copy tmp_questions(id, product_id, body, date_written, asker_name, asker_email, reported, helpful) FROM '/Users/georgehalterman/HackReactor/SDC/rpp2210-sdc-lilac-QA/server/questions.csv' WITH (FORMAT csv, DELIMITER ',', QUOTE '"', HEADER true, NULL 'NULL');
+\copy tmp_questions(id, product_id, body, date_written, asker_name, asker_email, reported, helpful) FROM '../backend/server/questions.csv' WITH (FORMAT csv, DELIMITER ',', QUOTE '"', HEADER true, NULL 'NULL');
 
 INSERT INTO questions (id, product_id, body, date_written, asker_name, asker_email, reported, helpful)
 SELECT id, product_id, body, to_timestamp(date_written::bigint / 1000), asker_name, asker_email, reported, helpful
 FROM tmp_questions;
 
-\copy tmp_answers(id, question_id, body, date_written, answerer_name, answerer_email, reported, helpful) FROM '/Users/georgehalterman/HackReactor/SDC/rpp2210-sdc-lilac-QA/server/answers.csv' WITH (FORMAT csv, DELIMITER ',', QUOTE '"', HEADER true, NULL 'NULL');
+\copy tmp_answers(id, question_id, body, date_written, answerer_name, answerer_email, reported, helpful) FROM '../backend/server/answers.csv' WITH (FORMAT csv, DELIMITER ',', QUOTE '"', HEADER true, NULL 'NULL');
 
 INSERT INTO answers (id, question_id, body, date_written, answerer_name, answerer_email, reported, helpful)
 SELECT id, question_id, body, to_timestamp(date_written::bigint / 1000), answerer_name, answerer_email, reported, helpful
 FROM tmp_answers;
 
-\copy photos(id, answer_id, url) FROM '/Users/georgehalterman/HackReactor/SDC/rpp2210-sdc-lilac-QA/server/answers_photos.csv' WITH (FORMAT csv, DELIMITER ',', QUOTE '"', HEADER true, NULL 'NULL');
+\copy photos(id, answer_id, url) FROM '../backend/server/answers_photos.csv' WITH (FORMAT csv, DELIMITER ',', QUOTE '"', HEADER true, NULL 'NULL');
 
 CREATE INDEX questions_product_id_idx
 ON questions (product_id);
